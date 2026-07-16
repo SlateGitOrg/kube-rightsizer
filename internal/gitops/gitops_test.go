@@ -95,7 +95,7 @@ func TestRepository_PrepareBranch_AppliesPatchAndCommits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PrepareBranch: %v", err)
 	}
-	defer repo.Cleanup(dir)
+	defer func() { _ = repo.Cleanup(dir) }()
 
 	patched, err := os.ReadFile(filepath.Join(dir, "deploy/checkout-api.yaml"))
 	if err != nil {
