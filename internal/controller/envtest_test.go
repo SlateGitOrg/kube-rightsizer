@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	rightsizerv1alpha1 "github.com/kushagrasikka/kube-rightsizer/api/v1alpha1"
-	"github.com/kushagrasikka/kube-rightsizer/internal/metrics"
+	rightsizerv1alpha1 "github.com/SlateGitOrg/kube-rightsizer/api/v1alpha1"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/metrics"
 )
 
 func TestEnvtest_ReconcileAgainstRealAPIServer(t *testing.T) {

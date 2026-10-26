@@ -1,7 +1,7 @@
 # Default values for kube-rightsizer.
 
 image:
-  repository: ghcr.io/kushagrasikka/kube-rightsizer
+  repository: ghcr.io/slategitorg/kube-rightsizer
   tag: "latest"
   pullPolicy: IfNotPresent
 

@@ -13,7 +13,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	rightsizerv1alpha1 "github.com/kushagrasikka/kube-rightsizer/api/v1alpha1"
+	rightsizerv1alpha1 "github.com/SlateGitOrg/kube-rightsizer/api/v1alpha1"
 )
 
 // ErrInsufficientSamples is returned when a container does not have enough

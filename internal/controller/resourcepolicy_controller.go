@@ -23,11 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	rightsizerv1alpha1 "github.com/kushagrasikka/kube-rightsizer/api/v1alpha1"
-	"github.com/kushagrasikka/kube-rightsizer/internal/gitops"
-	"github.com/kushagrasikka/kube-rightsizer/internal/metrics"
-	"github.com/kushagrasikka/kube-rightsizer/internal/patch"
-	"github.com/kushagrasikka/kube-rightsizer/internal/recommend"
+	rightsizerv1alpha1 "github.com/SlateGitOrg/kube-rightsizer/api/v1alpha1"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/gitops"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/metrics"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/patch"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/recommend"
 )
 
 // defaultRequeueInterval is how often an active (non-suspended) policy is

@@ -4,19 +4,27 @@
 
 ![kube-rightsizer](assets/hero.png)
 
-[![CI](https://github.com/kushagrasikka/kube-rightsizer/actions/workflows/ci.yml/badge.svg)](https://github.com/kushagrasikka/kube-rightsizer/actions/workflows/ci.yml)
-[![Go Reference](https://img.shields.io/badge/go-1.23-00ADD8?logo=go)](https://go.dev)
+[![CI](https://github.com/SlateGitOrg/kube-rightsizer/actions/workflows/ci.yml/badge.svg)](https://github.com/SlateGitOrg/kube-rightsizer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## The problem
+## Why
 
-Most teams set CPU/memory `requests` once, at deploy time, as a guess — and then never revisit them. The result, consistently observed across FinOps reports (CNCF, Kubecost, Datadog): **30–50% of provisioned compute in a typical cluster is never used.** Nobody right-sizes proactively because:
+Most teams set CPU/memory `requests` once, at deploy time, as a guess — and then never revisit them. The result is a lot of provisioned compute that is never used. Nobody right-sizes proactively because:
 
 - **It's manual and easy to get wrong.** Turning a Grafana chart into a `kubectl edit` is toil nobody prioritizes.
 - **It's risky.** Kubernetes' built-in answer, the Vertical Pod Autoscaler, can mutate live Pod specs and evict/restart workloads to apply new resources — a legitimate but scary blast radius for anyone who has been paged by a VPA-triggered restart storm.
 - **There's no audit trail.** Even when someone does right-size manually, it rarely goes through code review.
 
 **kube-rightsizer** takes a different, deliberately boring stance: it never touches a live object. It watches real Prometheus usage history, computes a statistically sound (p95 + safety headroom) recommendation per container, and opens a **GitHub pull request** against your GitOps manifests repo. A human (or your existing auto-merge policy) reviews and merges it like any other change — your normal rollout, canary, and rollback machinery keeps working exactly as it does today.
+
+## Features
+
+- Per-container CPU and memory recommendations from Prometheus usage history (default p95 plus headroom), with independent percentile, headroom, min/max clamps and request-to-limit multiplier for each resource.
+- A change threshold so stable workloads do not generate PR noise.
+- Surgical YAML patching: only `resources.requests` and `resources.limits` change; comments, formatting and unrelated fields are preserved.
+- Pull requests opened against a GitOps repo through go-git and the GitHub API; live objects are never mutated.
+- A namespaced `ResourcePolicy` CRD with per-workload and per-container exclusions, and `status.recommendations` for every computed result.
+- Helm chart, sample manifests, a kind demo script and a Grafana waste-vs-actual dashboard.
 
 ## Architecture
 
@@ -157,7 +165,11 @@ dashboards/            Grafana "waste vs actual" dashboard
 hack/                  kind demo script + demo fixtures
 ```
 
-## Known limitations / extension points
+## Testing
+
+`go test ./...` covers the recommendation math, YAML patching, the Prometheus client (against an HTTP test server), the git operations (against local fixtures) and the reconciler (against a fake client and in-memory fakes). CI also runs `gofmt`, `go vet`, golangci-lint, `helm lint`, a Docker build and the optional envtest suite.
+
+## Limitations and non-goals
 
 - **Manifest discovery convention**: the controller currently expects one file per workload at `<manifestPath>/<workload>.yaml` in the GitOps repo. Searching the whole repo for a matching `kind: Deployment` would remove that constraint at the cost of an extra clone-and-scan step; left as a natural follow-up.
 - **One PR per workload per reconcile** — if multiple containers in the same Deployment change, they're batched into a single commit/PR; if the same workload changes again before the previous PR merges, a new branch (named by policy generation) is opened rather than updating the existing one.

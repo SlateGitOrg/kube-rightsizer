@@ -26,7 +26,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	gitshttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 
-	"github.com/kushagrasikka/kube-rightsizer/internal/patch"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/patch"
 )
 
 // FileChange is one manifest file's before/after patch to apply on the

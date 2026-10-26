@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 
-	"github.com/kushagrasikka/kube-rightsizer/internal/patch"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/patch"
 )
 
 const fixtureDeployment = `apiVersion: apps/v1

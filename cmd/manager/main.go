@@ -19,10 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	rightsizerv1alpha1 "github.com/kushagrasikka/kube-rightsizer/api/v1alpha1"
-	"github.com/kushagrasikka/kube-rightsizer/internal/controller"
-	"github.com/kushagrasikka/kube-rightsizer/internal/gitops"
-	"github.com/kushagrasikka/kube-rightsizer/internal/metrics"
+	rightsizerv1alpha1 "github.com/SlateGitOrg/kube-rightsizer/api/v1alpha1"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/controller"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/gitops"
+	"github.com/SlateGitOrg/kube-rightsizer/internal/metrics"
 )
 
 var scheme = runtime.NewScheme()

@@ -1,4 +1,4 @@
-module github.com/kushagrasikka/kube-rightsizer
+module github.com/SlateGitOrg/kube-rightsizer
 
 go 1.23.1
 

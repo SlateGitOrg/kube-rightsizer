@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	rightsizerv1alpha1 "github.com/kushagrasikka/kube-rightsizer/api/v1alpha1"
+	rightsizerv1alpha1 "github.com/SlateGitOrg/kube-rightsizer/api/v1alpha1"
 )
 
 func almostEqual(a, b, eps float64) bool {

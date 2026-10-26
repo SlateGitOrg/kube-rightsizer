@@ -13,8 +13,8 @@ keywords:
   - cost-optimization
   - vpa
   - gitops
-home: https://github.com/kushagrasikka/kube-rightsizer
+home: https://github.com/SlateGitOrg/kube-rightsizer
 sources:
-  - https://github.com/kushagrasikka/kube-rightsizer
+  - https://github.com/SlateGitOrg/kube-rightsizer
 maintainers:
   - name: kube-rightsizer maintainers
