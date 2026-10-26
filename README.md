@@ -12,10 +12,10 @@
 Most teams set CPU/memory `requests` once, at deploy time, as a guess — and then never revisit them. The result is a lot of provisioned compute that is never used. Nobody right-sizes proactively because:
 
 - **It's manual and easy to get wrong.** Turning a Grafana chart into a `kubectl edit` is toil nobody prioritizes.
-- **It's risky.** Kubernetes' built-in answer, the Vertical Pod Autoscaler, can mutate live Pod specs and evict/restart workloads to apply new resources — a legitimate but scary blast radius for anyone who has been paged by a VPA-triggered restart storm.
+- **Automatic resizing changes live workloads.** The Vertical Pod Autoscaler can update Pod resources and evict Pods to apply them, which some teams do not want in production.
 - **There's no audit trail.** Even when someone does right-size manually, it rarely goes through code review.
 
-**kube-rightsizer** takes a different, deliberately boring stance: it never touches a live object. It watches real Prometheus usage history, computes a statistically sound (p95 + safety headroom) recommendation per container, and opens a **GitHub pull request** against your GitOps manifests repo. A human (or your existing auto-merge policy) reviews and merges it like any other change — your normal rollout, canary, and rollback machinery keeps working exactly as it does today.
+**kube-rightsizer** takes a different approach: it never touches a live object. It watches real Prometheus usage history, computes a statistically sound (p95 + safety headroom) recommendation per container, and opens a **GitHub pull request** against your GitOps manifests repo. A human (or your existing auto-merge policy) reviews and merges it like any other change — your normal rollout, canary, and rollback machinery keeps working exactly as it does today.
 
 ## Features
 
@@ -30,7 +30,7 @@ Most teams set CPU/memory `requests` once, at deploy time, as a guess — and th
 
 ```mermaid
 flowchart TD
-    subgraph kindcluster["kind cluster boundary"]
+    subgraph cluster["Kubernetes cluster"]
         subgraph controller["kube-rightsizer controller (kubebuilder)"]
             RECONCILE["Reconcile loop<br/>watches ResourcePolicy CRs"]
             ENGINE["p95 recommendation engine<br/>headroom + min/max clamps"]
@@ -38,7 +38,7 @@ flowchart TD
         end
         CRD["ResourcePolicy CRD<br/>thresholds + exclusions per namespace"]
         DEPLOYMENTS["Live Deployments<br/>(read-only, never mutated)"]
-        METRICSSERVER["metrics-server"]
+        KUBELET["kubelet / cAdvisor<br/>container usage metrics"]
     end
 
     PROM["Prometheus<br/>historical container usage"]
@@ -53,15 +53,15 @@ flowchart TD
     ENGINE -->|"recommended<br/>requests/limits"| PATCHER
     PATCHER -->|"branch + commit"| GITOPS
     GITOPS --> PR
-    METRICSSERVER -.->|"feeds"| PROM
+    KUBELET -.->|"scraped by"| PROM
     PROM -.->|"feedback tap"| GRAFANA
     RECONCILE -->|"status.recommendations"| CRD
 
     style controller fill:#1f2937,stroke:#4b5563,color:#e5e7eb
-    style kindcluster fill:#111827,stroke:#374151,color:#e5e7eb,stroke-dasharray: 5 5
+    style cluster fill:#111827,stroke:#374151,color:#e5e7eb,stroke-dasharray: 5 5
 ```
 
-**Why a PR, not a Pod patch?** This is the one architectural choice that matters most. The Vertical Pod Autoscaler is powerful, but "an automated system directly mutates my running Deployment's resources" is a decision most platform teams are (rightly) nervous about in production. Routing every recommendation through the exact same review + CI + progressive-rollout pipeline that any other manifest change goes through means kube-rightsizer inherits your existing safety net for free, instead of needing to reinvent canarying, rollback, and approval gates.
+**Why a PR, not a Pod patch?** Every recommendation goes through the same review, CI and rollout pipeline as any other manifest change, so approval, canarying and rollback are handled by tooling you already run. The controller does not need its own approval or rollback logic, and the change history lives in git.
 
 ## How it works
 
@@ -70,7 +70,7 @@ flowchart TD
 3. **Recommendation engine** (`internal/recommend`) — computes the p-th percentile (default p95) of the usage samples, adds the configured headroom (default 15%), clamps to any configured floor/ceiling, and derives a limit via a configurable request→limit multiplier. Pure function of `[]float64 -> Recommendation`, independent of Kubernetes or Prometheus types, so its math is exhaustively unit tested in isolation.
 4. **Change threshold** — a recommendation is only acted on if it differs from the container's current request by more than `changeThresholdPercent` (default 10%), so a stable workload doesn't generate PR noise every reconcile.
 5. **GitOps PR generator** (`internal/gitops` + `internal/patch`) — clones the GitOps manifests repo, checks out a new branch, surgically patches only the `resources.requests`/`resources.limits` of the affected containers in the target Deployment's YAML (via a `yaml.Node` tree edit, so comments/formatting/unrelated fields are untouched), commits, pushes, and opens a pull request with a table summarizing the change. **No live cluster object is ever modified.**
-6. **Status + feedback loop** — every computed recommendation (whether or not it crossed the PR threshold) is written to `ResourcePolicy.status.recommendations`, and the included Grafana dashboard (`dashboards/waste-vs-actual.json`) plots requested vs. p95-actual usage and an estimated waste percentage, sourced from the same Prometheus metrics-server feeds.
+6. **Status + feedback loop** — every computed recommendation (whether or not it crossed the PR threshold) is written to `ResourcePolicy.status.recommendations`, and the included Grafana dashboard (`dashboards/waste-vs-actual.json`) plots requested vs. p95-actual usage and an estimated waste percentage, sourced from the same Prometheus cAdvisor/kubelet container metrics.
 
 ## Quick start
 
@@ -96,8 +96,12 @@ go test ./internal/controller/... -tags=envtest -run TestEnvtest -v
 
 ### Try it against a local kind cluster (dry-run, no GitHub needed)
 
+`hack/kind-demo.sh` creates a kind cluster, installs metrics-server and the `ResourcePolicy` CRD, and applies a demo Deployment and a dry-run policy (no `gitOps` target, so recommendations appear only in `.status`). It does not install Prometheus. The controller always reads usage history from a Prometheus server, so you need one that scrapes the cluster's cAdvisor metrics (for example kube-prometheus-stack) and is reachable on `localhost:9090`:
+
 ```bash
 ./hack/kind-demo.sh
+# in another terminal, expose your in-cluster Prometheus on localhost:9090 (service name varies by install)
+kubectl -n monitoring port-forward svc/prometheus-server 9090:80
 go run ./cmd/manager --prometheus-address=http://localhost:9090
 kubectl get resourcepolicy -n shop default -o yaml   # watch status.recommendations populate
 ```
@@ -167,7 +171,7 @@ hack/                  kind demo script + demo fixtures
 
 ## Testing
 
-`go test ./...` covers the recommendation math, YAML patching, the Prometheus client (against an HTTP test server), the git operations (against local fixtures) and the reconciler (against a fake client and in-memory fakes). CI also runs `gofmt`, `go vet`, golangci-lint, `helm lint`, a Docker build and the optional envtest suite.
+`go test ./...` covers the recommendation math, YAML patching, the Prometheus client (against an HTTP test server), the git operations (against local fixtures) and the reconciler (against a fake client and in-memory fakes). CI also runs `gofmt`, `go vet`, golangci-lint, `helm lint` and a Docker build. The envtest job runs in CI but is non-blocking (`continue-on-error`), because it downloads Kubernetes control-plane binaries at run time.
 
 ## Limitations and non-goals
 

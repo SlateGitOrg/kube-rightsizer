@@ -4,9 +4,10 @@
 # against it so you can watch a recommendation get computed end to end.
 #
 # Requires: kind, kubectl, helm, go (all local-only tools; no cloud account
-# needed). Does NOT require Prometheus to be scraping in-cluster metrics --
-# it configures the controller against the FakeSource-equivalent local demo
-# data documented below unless PROMETHEUS_ADDRESS is set.
+# needed). Does NOT install Prometheus: the controller always reads usage
+# history from the server given by --prometheus-address, so run one that
+# scrapes the cluster's cAdvisor metrics and make it reachable (for example
+# with kubectl port-forward on localhost:9090).
 set -euo pipefail
 
 CLUSTER_NAME="${CLUSTER_NAME:-kube-rightsizer-demo}"
